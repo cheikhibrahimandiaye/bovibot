@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Environnement
+.env
+*.env
+
+# Node
+node_modules/
+package-lock.json
+
+# Claude / agents
+.agents/
+.claude/
+.mcp.json
+claude-skills/
+skills-lock.json
+
+# Word temp files
+~$*.docx
+
+# OS
+.DS_Store
+Thumbs.db
