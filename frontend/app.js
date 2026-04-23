@@ -878,13 +878,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const btn = e.currentTarget;
     btn.classList.add('spinning');
     if (state.currentPage === 'dashboard') await loadDashboard();
-    if (state.currentPage === 'troupeau')  await loadTroupeau();
+    else if (state.currentPage === 'troupeau')  await loadTroupeau();
+    else if (state.currentPage === 'sante')     await loadSante();
+    else if (state.currentPage === 'ventes')    await loadVentes();
+    else if (state.currentPage === 'pesees')    await loadTroupeau();
     btn.classList.remove('spinning');
     updateSyncTime();
   });
 
-  // Alert bell → dashboard
-  document.getElementById('alert-bell').addEventListener('click', () => navigateTo('dashboard'));
+  // Alert bell → ouvre le panneau alertes sur le dashboard
+  document.getElementById('alert-bell').addEventListener('click', () => {
+    navigateTo('dashboard');
+    setTimeout(() => {
+      const panel = document.getElementById('alerts-panel');
+      if (panel) panel.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  });
 
   // Mark all alerts treated
   document.getElementById('mark-all-btn').addEventListener('click', async () => {
