@@ -886,13 +886,21 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSyncTime();
   });
 
-  // Alert bell → ouvre le panneau alertes sur le dashboard
+  // Alert bell → scroll vers le feed alertes (navigation si hors dashboard)
   document.getElementById('alert-bell').addEventListener('click', () => {
-    navigateTo('dashboard');
-    setTimeout(() => {
-      const panel = document.getElementById('alerts-panel');
-      if (panel) panel.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    const scrollToFeed = () => {
+      const feed = document.getElementById('alert-feed');
+      if (!feed) return;
+      feed.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      feed.classList.add('feed-highlight');
+      setTimeout(() => feed.classList.remove('feed-highlight'), 1200);
+    };
+    if (state.currentPage === 'dashboard') {
+      scrollToFeed();
+    } else {
+      navigateTo('dashboard');
+      setTimeout(scrollToFeed, 150);
+    }
   });
 
   // Mark all alerts treated

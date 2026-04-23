@@ -667,6 +667,11 @@ code { font-family: 'JetBrains Mono', monospace; }
 }
 .alert-feed::-webkit-scrollbar { width: 3px; }
 .alert-feed::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.alert-feed.feed-highlight { animation: feedPulse 1.2s ease; }
+@keyframes feedPulse {
+  0%,100% { box-shadow: none; }
+  30%      { box-shadow: 0 0 0 3px var(--amber); }
+}
 
 /* Alert card (Polysure policy card style) */
 .alert-row {
