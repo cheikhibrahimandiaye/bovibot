@@ -7,7 +7,9 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 
 COPY backend/ backend/
 COPY frontend/ frontend/
+COPY start.sh start.sh
+RUN chmod +x start.sh
 
 EXPOSE 8002
 
-CMD uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8002}
+CMD ["sh", "start.sh"]
