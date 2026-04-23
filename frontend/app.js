@@ -6,7 +6,9 @@
 'use strict';
 
 // ─── CONFIG ─────────────────────────────────────────────────────
-const API = 'http://localhost:8002';
+const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8002'
+  : window.location.origin;
 const SESSION_ID = 'session-' + Math.random().toString(36).slice(2, 10);
 const POLL_INTERVAL = 30_000; // 30s pour les alertes
 
@@ -67,7 +69,7 @@ async function checkApiHealth() {
   const pill = document.getElementById('api-status');
   const txt  = pill.querySelector('.api-label');
   try {
-    await apiFetch('/');
+    await apiFetch('/health');
     pill.classList.add('connected');
     pill.classList.remove('error');
     txt.textContent = 'API connectée';
@@ -124,7 +126,7 @@ async function loadStats() {
 
 async function loadAnimauxStats() {
   try {
-    const animaux = await apiFetch('/stats/animaux');
+    const animaux = await apiFetch('/stats/animaux?statut=actif');
     state.animauxData = animaux;
     renderGmqChart(animaux);
     renderTroupeauMini(animaux.slice(0, 6));
@@ -300,6 +302,7 @@ async function loadTroupeau() {
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text-2)">Erreur de chargement</td></tr>`;
   }
 }
+
 
 function renderTroupeauTable(animaux) {
   const tbody = document.getElementById('troupeau-tbody');

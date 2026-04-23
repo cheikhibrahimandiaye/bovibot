@@ -4,9 +4,11 @@ Skill : fastapi-architect (port 8002, structure modulaire)
 """
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from backend.config import settings
 from backend.database import init_pool
@@ -50,9 +52,15 @@ app.include_router(ventes.router)
 app.include_router(pesees.router)
 
 
-@app.get("/", tags=["Santé"])
+@app.get("/health", tags=["Santé"])
 def health_check() -> dict:
     return {"status": "ok", "app": "BoviBot", "version": "1.0.0"}
+
+
+# Servir le frontend statique — doit être monté APRÈS les routes API
+_frontend_dir = Path(__file__).parent.parent / "frontend"
+if _frontend_dir.exists():
+    app.mount("/", StaticFiles(directory=str(_frontend_dir), html=True), name="frontend")
 
 
 if __name__ == "__main__":

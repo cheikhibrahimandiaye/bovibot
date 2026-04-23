@@ -1,13 +1,12 @@
 """
 Agent LLM BoviBot : orchestration des modes CONSULTATION et ACTION.
 Skill : llm-agent-flow (confirmation avant tout CALL sp_...)
+Supporte Ollama (local) et OpenAI API (déploiement cloud) via LLM_PROVIDER.
 """
 import json
 import logging
 from datetime import date
 from typing import Any
-
-import ollama
 
 from backend.config import settings
 from backend.database import execute_query, execute_procedure, resolve_animal_by_tag
@@ -17,38 +16,79 @@ from backend.models import PendingAction
 logger = logging.getLogger(__name__)
 
 
-def _get_ollama_client() -> ollama.Client:
-    """Retourne un client Ollama pointant vers l'hôte configuré."""
-    return ollama.Client(host=settings.ollama_host)
-
-
 # ---------------------------------------------------------------------------
-# Appel LLM
+# Appel LLM — Ollama ou OpenAI selon LLM_PROVIDER
 # ---------------------------------------------------------------------------
 
 def call_llm(user_message: str, conversation_history: list[dict]) -> dict[str, Any]:
-    """Envoie le message au LLM Ollama et retourne le JSON parsé."""
+    """Envoie le message au LLM configuré et retourne le JSON parsé."""
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     messages.extend(conversation_history)
     messages.append({"role": "user", "content": user_message})
 
-    client = _get_ollama_client()
-    logger.info("Appel Ollama — modèle : %s | message : %.80s…", settings.ollama_model, user_message)
+    if settings.llm_provider == "openai":
+        raw_json = _call_openai(messages)
+    else:
+        raw_json = _call_ollama(messages)
 
+    logger.info("Réponse LLM brute : %.200s", raw_json)
+
+    return _parse_llm_json(raw_json)
+
+
+def _call_ollama(messages: list[dict]) -> str:
+    import ollama
+    client = ollama.Client(host=settings.ollama_host)
+    logger.info("Appel Ollama — modèle : %s", settings.ollama_model)
     response = client.chat(
         model=settings.ollama_model,
         messages=messages,
         format="json",
         options={"temperature": 0.1},
     )
-
-    # Compatibilité toutes versions ollama : objet (.message.content) ou dict (['message']['content'])
     if isinstance(response, dict):
-        raw_json: str = response["message"]["content"]
-    else:
-        raw_json: str = response.message.content
-    logger.info("Réponse Ollama brute : %.200s", raw_json)
+        return response["message"]["content"]
+    return response.message.content
 
+
+_FALLBACK_MODELS = [
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "google/gemma-3-27b-it:free",
+    "google/gemma-3-12b-it:free",
+    "nousresearch/hermes-3-llama-3.1-405b:free",
+    "qwen/qwen3-coder:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+]
+
+def _call_openai(messages: list[dict]) -> str:
+    from openai import OpenAI, RateLimitError
+    client = OpenAI(
+        api_key=settings.openai_api_key,
+        base_url=settings.openai_base_url,
+        max_retries=0,
+    )
+    models = [settings.openai_model] + [m for m in _FALLBACK_MODELS if m != settings.openai_model]
+    last_exc = None
+    for model in models:
+        try:
+            logger.info("Appel LLM cloud — modèle : %s | base_url : %s", model, settings.openai_base_url)
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=0.1,
+                response_format={"type": "json_object"},
+            )
+            return response.choices[0].message.content
+        except RateLimitError as e:
+            logger.warning("Rate limit sur %s, essai modèle suivant...", model)
+            last_exc = e
+        except Exception as e:
+            logger.warning("Erreur sur %s : %s, essai modèle suivant...", model, e)
+            last_exc = e
+    raise last_exc
+
+
+def _parse_llm_json(raw_json: str) -> dict[str, Any]:
     try:
         parsed = json.loads(raw_json)
     except json.JSONDecodeError:
@@ -58,10 +98,9 @@ def call_llm(user_message: str, conversation_history: list[dict]) -> dict[str, A
         if match:
             parsed = json.loads(match.group())
         else:
-            logger.error("Impossible de parser la réponse Ollama : %s", raw_json)
+            logger.error("Impossible de parser la réponse LLM : %s", raw_json)
             parsed = {}
 
-    # Garantir la présence du champ 'mode' au minimum
     if "mode" not in parsed:
         parsed["mode"] = "CONVERSATION"
     if "natural_response" not in parsed:

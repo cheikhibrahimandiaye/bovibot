@@ -49,9 +49,18 @@ def get_stats() -> dict[str, Any]:
 
 
 @router.get("/animaux")
-def get_animaux_stats() -> list[dict[str, Any]]:
-    """Animaux actifs avec GMQ et âge calculés — pour le bento chart."""
-    rows = execute_query("""
+def get_animaux_stats(statut: str | None = None) -> list[dict[str, Any]]:
+    """Animaux avec GMQ et âge calculés. Filtre par statut si fourni (actif|vendu|mort)."""
+    from fastapi import HTTPException as _HTTPException
+    _STATUTS = {"actif", "vendu", "mort"}
+    params: tuple = ()
+    where = ""
+    if statut:
+        if statut not in _STATUTS:
+            raise _HTTPException(status_code=400, detail=f"Statut invalide. Valeurs : {', '.join(_STATUTS)}")
+        where = "WHERE a.statut = %s"
+        params = (statut,)
+    rows = execute_query(f"""
         SELECT
             a.id, a.numero_tag, a.nom, a.sexe, a.statut,
             a.poids_actuel_kg,
@@ -60,7 +69,7 @@ def get_animaux_stats() -> list[dict[str, Any]]:
             r.nom                          AS race
         FROM   animaux a
         LEFT JOIN races r ON r.id = a.race_id
-        WHERE  a.statut = 'actif'
+        {where}
         ORDER BY a.numero_tag
-    """)
+    """, params)
     return [{k: _clean(v) for k, v in row.items()} for row in rows]
