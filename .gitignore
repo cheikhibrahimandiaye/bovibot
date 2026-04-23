@@ -28,6 +28,12 @@ skills-lock.json
 
 # Word temp files
 ~$*.docx
+rapport_bovibot.docx
+
+# Scripts utilitaires locaux
+generate_rapport.py
+package.json
+package-lock.json
 
 # OS
 .DS_Store
